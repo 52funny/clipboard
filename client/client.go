@@ -4,7 +4,6 @@ import (
 	"bytes"
 	constrant "clipboard/constarnt"
 	"context"
-	"fmt"
 	"log"
 	"net/url"
 	"sync"
@@ -18,9 +17,9 @@ var readCh = make(chan []byte, 256)
 var writeCh = make(chan []byte)
 
 // listen websocket to prepare for client
-func ReadAndWriteWebSocket(ctx context.Context, wait *sync.WaitGroup) {
+func ReadAndWriteWebSocket(ctx context.Context, wait *sync.WaitGroup, host string) {
 	defer wait.Done()
-	u := url.URL{Scheme: "ws", Host: "localhost:800", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: host, Path: "/ws"}
 	dial := websocket.DefaultDialer
 	// dial.ReadBufferSize = 1024
 	// dial.WriteBufferSize = 1024
@@ -58,7 +57,6 @@ func ReadAndWriteWebSocket(ctx context.Context, wait *sync.WaitGroup) {
 		for {
 			select {
 			case message, ok := <-readCh:
-				fmt.Println(len(message))
 				c.SetWriteDeadline(time.Now().Add(constrant.WriteWait))
 				if !ok {
 					// The hub closed the channel.
@@ -81,14 +79,13 @@ func ReadAndWriteWebSocket(ctx context.Context, wait *sync.WaitGroup) {
 				if err := w.Close(); err != nil {
 					return
 				}
-				logrus.Info("send done")
+				logrus.Infoln("send done, bytes:", len(message))
 			case <-ticker.C:
 				c.SetWriteDeadline(time.Now().Add(constrant.WriteWait))
 				if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
 					return
 				}
 			case <-ctx.Done():
-				logrus.Info("got signal to interrupt")
 				err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
 					log.Println("write close:", err)

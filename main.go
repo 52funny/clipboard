@@ -4,6 +4,7 @@ import (
 	"clipboard/client"
 	"clipboard/server"
 	"context"
+	"flag"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,9 +15,17 @@ import (
 )
 
 var hub = server.NewHub()
+var isServer *bool
+var isClient *bool
+var port string
+var host string
 
 func init() {
-	// logrus.SetReportCaller(true)
+	isServer = flag.Bool("s", false, "for server")
+	isClient = flag.Bool("c", false, "for client")
+	flag.StringVar(&port, "p", "3355", "server port")
+	flag.StringVar(&host, "h", "localhost:3355", "host server address")
+	flag.Parse()
 }
 func main() {
 	err := clipboard.Init()
@@ -25,20 +34,20 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	var wait sync.WaitGroup
+
 	// handle the signal
 	go HandleSignal(cancel)
 
-	if len(os.Args) == 2 {
-		switch os.Args[1] {
-		case "server":
-			wait.Add(1)
-			go server.ListenWebSocket(ctx, &wait, hub)
-		case "client":
-			wait.Add(3)
-			go client.ListenClipboard(ctx, &wait)
-			go client.ReadAndWriteWebSocket(ctx, &wait)
-			go client.SetClipboard(ctx, &wait)
-		}
+	if *isServer {
+		// is server
+		wait.Add(1)
+		go server.ListenWebSocket(ctx, &wait, hub, port)
+	} else if *isClient {
+		// is client
+		wait.Add(3)
+		go client.ListenClipboard(ctx, &wait)
+		go client.ReadAndWriteWebSocket(ctx, &wait, host)
+		go client.SetClipboard(ctx, &wait)
 	}
 	wait.Wait()
 }

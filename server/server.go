@@ -9,7 +9,7 @@ import (
 )
 
 // listen websocket server
-func ListenWebSocket(ctx context.Context, wait *sync.WaitGroup, hub *Hub) {
+func ListenWebSocket(ctx context.Context, wait *sync.WaitGroup, hub *Hub, port string) {
 	defer wait.Done()
 	go hub.run()
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +19,7 @@ func ListenWebSocket(ctx context.Context, wait *sync.WaitGroup, hub *Hub) {
 		serveWs(hub, w, r)
 	})
 	go func() {
-		err := http.ListenAndServe(":800", nil)
+		err := http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			logrus.Println(err)
 		}
